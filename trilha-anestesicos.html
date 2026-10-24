@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plantão no Centro Cirúrgico: anestésicos em ação</title>
+<style>
+:root{
+ --teal:#0F766E; --teal-esc:#134E4A; --teal-claro:#CCECE8;
+ --ambar:#D97706; --perigo:#DC2626; --ok:#15803D;
+ --bg:#F1F7F6; --tinta:#1F2937; --cinza:#6B7280; --card:#FFFFFF; --borda:#D7E5E2;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:var(--bg);color:var(--tinta);min-height:100vh;}
+.wrap{max-width:880px;margin:0 auto;padding:14px 14px 40px;}
+header.topo{background:linear-gradient(135deg,var(--teal-esc),var(--teal));color:#fff;border-radius:16px;padding:20px 22px;margin-bottom:14px;}
+header.topo .kicker{font-size:.72rem;letter-spacing:.14em;font-weight:700;opacity:.85;text-transform:uppercase;}
+header.topo h1{font-size:1.3rem;line-height:1.25;margin-top:4px;}
+header.topo p{font-size:.88rem;opacity:.92;margin-top:6px;}
+.hud{display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap;}
+.hud .pts{background:var(--card);border:1px solid var(--borda);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.85rem;color:var(--teal-esc);}
+.barraW{flex:1;min-width:140px;height:12px;background:#DDEAE7;border-radius:999px;overflow:hidden;}
+.barra{height:100%;width:0%;background:linear-gradient(90deg,var(--teal),#2DD4BF);border-radius:999px;transition:width .5s;}
+.mapa{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;}
+.mapa .no{flex:1;min-width:74px;background:var(--card);border:1.5px solid var(--borda);border-radius:12px;padding:7px 4px;text-align:center;font-size:.62rem;font-weight:600;color:var(--cinza);cursor:pointer;}
+.mapa .no .ic{font-size:1rem;display:block;margin-bottom:2px;}
+.mapa .no.ativa{border-color:var(--teal);color:var(--teal-esc);background:var(--teal-claro);}
+.mapa .no.feita{border-color:var(--ok);color:var(--ok);}
+.mapa .no.trancada{opacity:.45;cursor:default;}
+.fase{display:none;animation:surge .35s ease;}
+.fase.ativa{display:block;}
+@keyframes surge{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:18px;margin-bottom:12px;}
+.card h2{font-size:1.05rem;color:var(--teal-esc);margin-bottom:8px;}
+.card h3{font-size:.92rem;color:var(--teal-esc);margin:10px 0 6px;}
+.card p{font-size:.9rem;line-height:1.55;margin-bottom:8px;}
+.card p.nota{font-size:.8rem;color:var(--cinza);font-style:italic;}
+.etq{display:inline-block;background:var(--teal-claro);color:var(--teal-esc);font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:3px 10px;margin-bottom:8px;}
+.btn{display:inline-block;border:none;border-radius:999px;padding:11px 20px;font-size:.9rem;font-weight:700;cursor:pointer;background:var(--teal);color:#fff;}
+.btn.sec{background:#E5EFED;color:var(--teal-esc);}
+.btn:disabled{opacity:.4;cursor:default;}
+.opc{display:block;width:100%;text-align:left;background:#F8FBFA;border:1.5px solid var(--borda);border-radius:12px;padding:12px 14px;font-size:.88rem;margin-bottom:8px;cursor:pointer;}
+.opc:hover{border-color:var(--teal);}
+.opc.certa{border-color:var(--ok);background:#EDF9EF;}
+.opc.errada{border-color:var(--perigo);background:#FDF0EF;}
+.opc:disabled{cursor:default;}
+.feed{border-radius:12px;padding:12px 14px;font-size:.85rem;line-height:1.5;margin:8px 0;display:none;}
+.feed.ok{display:block;background:#EDF9EF;border:1px solid #BBE5C3;color:#14532D;}
+.feed.erro{display:block;background:#FDF0EF;border:1px solid #F3C4C0;color:#7F1D1D;}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+.chip{background:#F8FBFA;border:1.5px solid var(--borda);border-radius:999px;padding:8px 14px;font-size:.82rem;font-weight:600;cursor:pointer;}
+.chip.sel{border-color:var(--teal);background:var(--teal-claro);}
+.chip.certa{border-color:var(--ok);background:#EDF9EF;color:#14532D;}
+.chip.errada{border-color:var(--perigo);background:#FDF0EF;color:#7F1D1D;}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:620px){.grade2{grid-template-columns:1fr;}}
+.painel{background:#0B3B38;border-radius:14px;padding:16px;color:#fff;margin:10px 0;}
+.painel .tit{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:10px;}
+input[type=range]{width:100%;accent-color:#2DD4BF;}
+.monitor{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px;}
+@media(min-width:620px){.monitor{grid-template-columns:repeat(4,1fr);}}
+.monitor.m3{grid-template-columns:repeat(3,1fr);}
+.mon{background:rgba(255,255,255,.08);border-radius:10px;padding:10px;font-size:.72rem;}
+.mon b{display:block;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;opacity:.7;margin-bottom:4px;}
+.mon span{font-size:.78rem;font-weight:600;}
+.mon.alerta span{color:#FCA5A5;}
+.mon.bom span{color:#6EE7B7;}
+.mon.medio span{color:#FDE68A;}
+.corpo{display:flex;gap:10px;flex-wrap:wrap;}
+.corpo .zona{flex:1;min-width:140px;background:#F8FBFA;border:1.5px solid var(--borda);border-radius:12px;padding:12px;text-align:center;cursor:pointer;font-size:.82rem;font-weight:600;}
+.corpo .zona .ic{font-size:1.5rem;display:block;margin-bottom:4px;}
+.corpo .zona.vista{border-color:var(--ok);background:#EDF9EF;}
+.detalhe{background:#F8FBFA;border-left:4px solid var(--teal);border-radius:0 12px 12px 0;padding:12px 14px;font-size:.85rem;line-height:1.5;margin:10px 0;display:none;}
+.tabela{width:100%;border-collapse:collapse;font-size:.78rem;margin:8px 0;}
+.tabela th{background:var(--teal-claro);color:var(--teal-esc);padding:7px 8px;text-align:left;}
+.tabela td{border-bottom:1px solid var(--borda);padding:7px 8px;}
+.destaque{background:#FFF7E8;border:1px solid #F3DFB6;border-radius:12px;padding:12px 14px;font-size:.85rem;margin:10px 0;line-height:1.5;}
+.alarme{background:#7F1D1D;color:#fff;border-radius:14px;padding:16px;margin:10px 0;animation:pulsa 1.2s infinite;}
+@keyframes pulsa{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 0 10px rgba(220,38,38,0)}}
+.term{height:14px;background:linear-gradient(90deg,#6EE7B7,#FDE68A,#F59E0B,#DC2626);border-radius:999px;position:relative;margin:14px 0 4px;}
+.term .cursor{position:absolute;top:-7px;width:4px;height:28px;background:#1F2937;border-radius:2px;transition:left .2s;}
+.rodape{margin-top:26px;text-align:center;font-size:.72rem;color:var(--cinza);line-height:1.7;}
+.rodape b{color:var(--tinta);display:block;}
+.timeline{border-left:3px solid var(--teal);margin:10px 0 10px 8px;padding-left:16px;}
+.timeline .tl{margin-bottom:12px;font-size:.85rem;line-height:1.5;position:relative;}
+.timeline .tl::before{content:'';position:absolute;left:-23px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--teal);}
+.lousa{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0;}
+.sala{background:#0B3B38;color:#fff;border-radius:12px;padding:12px;font-size:.75rem;line-height:1.45;}
+.sala b{display:block;font-size:.8rem;color:#5EEAD4;margin-bottom:3px;}
+.dossie{border:1.5px solid var(--borda);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+.dossie .cab{background:#F8FBFA;padding:12px 14px;font-weight:700;font-size:.9rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.dossie .corpoD{display:none;padding:12px 14px;font-size:.85rem;line-height:1.55;}
+.dossie.aberto .corpoD{display:block;}
+.dossie .cab .st{font-size:.7rem;color:var(--cinza);font-weight:600;}
+.vermelho{color:var(--perigo);font-weight:700;}
+.capitulo{border:1.5px solid var(--borda);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+.capitulo .cabc{background:#F8FBFA;padding:11px 14px;font-weight:700;font-size:.85rem;cursor:pointer;}
+.capitulo .txtc{display:none;padding:10px 14px;font-size:.84rem;line-height:1.55;}
+.capitulo.aberto .txtc{display:block;}
+.capitulo.aberto .cabc{background:var(--teal-claro);color:var(--teal-esc);}
+.alvo{border:1.5px solid var(--borda);border-radius:12px;padding:12px;margin-bottom:8px;}
+.alvo h4{font-size:.85rem;margin-bottom:6px;}
+svg text{font-family:'Segoe UI',system-ui,sans-serif;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="topo">
+ <div class="kicker">Cuidados Farmacêuticos nas Doenças Inflamatórias · Anestésicos</div>
+ <h1>🏥 Plantão no Centro Cirúrgico: anestésicos em ação</h1>
+ <p>Cinco salas, cinco pacientes, um plantão inteiro de farmacologia. Você é o(a) farmacêutico(a) do centro cirúrgico: cada decisão anestésica vai passar por você.</p>
+</header>
+<div class="hud">
+ <div class="pts">⭐ <span id="pts">0</span> pts</div>
+ <div class="barraW"><div class="barra" id="barra"></div></div>
+ <div class="pts" id="faseTag">Fase 1/11</div>
+</div>
+<div class="mapa" id="mapa"></div>
+<div id="palco"></div>
+<div class="rodape">
+ <b>Pharmind · Semiologia Farmacêutica na Prática</b>
+ Profa. Caroline Mourão · @dracarolinemourao_<br>
+ Material didático · Cuidados Farmacêuticos nas Doenças Inflamatórias · Unifor
+</div>
+</div>
+<script>
+/* ===================== ESTADO E MOTOR ===================== */
+const S={fase:0,pts:0,done:[],sub:{}};
+function pts(n){S.pts+=n;document.getElementById('pts').textContent=S.pts;}
+const FASES=[
+ {ic:'🛏️',t:'Plantão'},{ic:'🗺️',t:'Mapa'},{ic:'💉',t:'Indução'},{ic:'🧠',t:'Mecanismo'},
+ {ic:'💪',t:'BNM'},{ic:'🌬️',t:'Gases'},{ic:'💤',t:'Venosos'},{ic:'🚨',t:'Código'},
+ {ic:'🌿',t:'História'},{ic:'⚡',t:'Canal Na+'},{ic:'🌅',t:'Alta'}
+];
+function mapa(){
+ const m=document.getElementById('mapa');m.innerHTML='';
+ FASES.forEach((f,i)=>{
+  const d=document.createElement('div');
+  d.className='no'+(i===S.fase?' ativa':'')+(S.done.includes(i)?' feita':'')+(i>S.fase&&!S.done.includes(i)?' trancada':'');
+  d.innerHTML='<span class="ic">'+f.ic+'</span>'+(i+1)+'. '+f.t+(S.done.includes(i)?' ✓':'');
+  if(i<=S.fase||S.done.includes(i)) d.onclick=()=>{S.fase=i;render();};
+  m.appendChild(d);
+ });
+ document.getElementById('faseTag').textContent='Fase '+(S.fase+1)+'/11';
+ document.getElementById('barra').style.width=(S.done.length/11*100)+'%';
+}
+function completa(i){ if(!S.done.includes(i)){S.done.push(i);} mapa(); }
+function avancar(){ if(S.fase<10){S.fase++;render();window.scrollTo({top:0,behavior:'smooth'});} }
+function botaoAvancar(id){ return '<button class="btn" id="'+id+'" disabled onclick="avancar()">Avançar ➜</button>'; }
+let QZ={};
+function quiz(id,opcoes){
+ QZ[id]=opcoes;
+ return opcoes.map((o,i)=>'<button class="opc" id="'+id+i+'" onclick="resp(\''+id+'\','+i+')">'+o.t+'</button>').join('')+
+ '<div class="feed" id="'+id+'fb"></div>';
+}
+function resp(id,i){
+ const o=QZ[id][i], fb=document.getElementById(id+'fb');
+ if(o.ok){
+   QZ[id].forEach((x,j)=>{const b=document.getElementById(id+j); if(x.ok)b.classList.add('certa'); b.disabled=true;});
+   fb.className='feed ok'; fb.innerHTML='✅ '+o.fb;
+   if(!S.sub[id]){S.sub[id]=1;pts(10);}
+ } else {
+   document.getElementById(id+i).classList.add('errada');
+   fb.className='feed erro'; fb.innerHTML='❌ '+o.fb;
+ }
+ if(CHK[S.fase])CHK[S.fase]();
+}
+/* ===================== F0: O PLANTÃO ===================== */
+function f0(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 1 · O plantão começa</span>
+   <h2>A lousa do centro cirúrgico</h2>
+   <p>Você chega para o plantão e encontra a programação do dia. Cada sala vai exigir um conhecimento diferente, e todos passarão por você até a última fase:</p>
+   <div class="lousa">
+    <div class="sala"><b>Sala 1 · João, 55a</b>Colelitíase. Laparoscopia eletiva de 1 a 2 h. Sobrepeso, sem comorbidades.</div>
+    <div class="sala"><b>Sala 2 · Maria, 32a</b>Gestante, 39 semanas. Cesariana de urgência por desaceleração fetal.</div>
+    <div class="sala"><b>Sala 3 · Paulo, 70a</b>Diabético, insuficiência renal moderada. Amputação transtibial por gangrena.</div>
+    <div class="sala"><b>Sala 4 · Ana, 28a</b>Politrauma com choque hipovolêmico. Laparotomia emergencial.</div>
+    <div class="sala"><b>Sala 5 · Carlos, 60a</b>Hipertenso, IC leve. Correção eletiva de aneurisma abdominal.</div>
+   </div>
+   <p class="nota">Conceito de partida: anestesia é o estado de total ausência da percepção de todas as sensações, incluindo as dolorosas. Pode ser geral ou parcial (regional).</p>
+  </div>
+  <div class="card">
+   <h2>🎛️ Painel de sedação</h2>
+   <p>Antes das salas, calibre o olhar: deslize o controle e veja o que muda no paciente a cada nível de profundidade. <strong>Visite os 4 níveis.</strong></p>
+   <div class="painel">
+    <div class="tit">Profundidade: <span id="nivNome" style="letter-spacing:0">Sedação mínima</span></div>
+    <input type="range" min="0" max="3" value="0" id="nivel" oninput="nivel(this.value)">
+    <div class="monitor">
+     <div class="mon bom" id="m1"><b>Consciência</b><span id="m1v">Acordado</span></div>
+     <div class="mon bom" id="m2"><b>Via aérea</b><span id="m2v">Reflexos intactos</span></div>
+     <div class="mon bom" id="m3"><b>Ventilação</b><span id="m3v">Drive presente</span></div>
+     <div class="mon bom" id="m4"><b>Cardiovascular</b><span id="m4v">Preservado</span></div>
+    </div>
+   </div>
+   <p class="nota" id="nivDica">Níveis visitados: 1/4</p>
+   <h3>Agora responda:</h3>
+   <p>Em qual nível o paciente perde a consciência, os reflexos de via aérea e o drive ventilatório, com risco para a função cardiovascular?</p>
+   ${quiz('q0',[
+    {t:'Sedação moderada',ok:false,fb:'Na sedação moderada a consciência está deprimida, mas o paciente ainda responde a comandos verbais e estímulos táteis leves, com reflexos e ventilação preservados.'},
+    {t:'Anestesia geral',ok:true,fb:'Isso! Na anestesia geral há inconsciência, perda dos reflexos da via aérea, perda do drive ventilatório e risco para a função cardiovascular. Por isso intubação e ventilação mecânica.'},
+    {t:'Sedação profunda',ok:false,fb:'Na sedação profunda pode ser preciso ajudar a manter via aérea e ventilação, mas o quadro completo de perda de reflexos e drive é da anestesia geral.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av0')}</div>
+ </div>`;
+}
+const NIVEIS=[
+ ['Sedação mínima',['Acordado','bom'],['Reflexos intactos','bom'],['Drive presente','bom'],['Preservado','bom']],
+ ['Sedação moderada',['Deprimida, responde a comando verbal/tátil leve','medio'],['Reflexos intactos','bom'],['Drive presente','bom'],['Preservado','bom']],
+ ['Sedação profunda',['Deprimida','medio'],['Pode precisar de assistência','medio'],['Pode precisar de assistência','medio'],['Preservado','bom']],
+ ['ANESTESIA GERAL',['Inconsciência','alerta'],['Perda dos reflexos','alerta'],['Perda do drive','alerta'],['Risco para a função','alerta']]
+];
+let nivVisit=new Set([0]);
+function nivel(v){
+ v=+v; const N=NIVEIS[v];
+ document.getElementById('nivNome').textContent=N[0];
+ for(let k=1;k<=4;k++){
+  document.getElementById('m'+k).className='mon '+N[k][1];
+  document.getElementById('m'+k+'v').textContent=N[k][0];
+ }
+ nivVisit.add(v);
+ document.getElementById('nivDica').textContent='Níveis visitados: '+nivVisit.size+'/4';
+ chk0();
+}
+function chk0(){
+ const ok=nivVisit.size>=4&&S.sub['q0'];
+ const b=document.getElementById('av0'); if(b){b.disabled=!ok; if(ok)completa(0);}
+}
+/* ===================== F1: MAPA + TÉCNICA POR SALA ===================== */
+const ZONAS=[
+ ['🧠','Anestesia Geral','Inconsciência total. Pode ser inalatória, venosa total ou balanceada (a mais usada: combina venosos e inalatórios).'],
+ ['🦴','Raquidiana','Anestésico local no espaço subaracnóideo, através da dura-máter. Ação rápida, pouca dose. Complicações: hipotensão de forma rápida e cefaleia por hipotensão liquórica.'],
+ ['🪡','Peridural (epidural)','Anestésico local no espaço epidural, sem romper a meninge: não ocorre cefaleia liquórica. Precisa de doses mais altas. Complicações: hipotensão lenta, depressão respiratória e parada respiratória.'],
+ ['🦵','Bloqueio de plexo','Anestesia regional de um grupo de nervos (plexo braquial, por exemplo) para anestesiar um membro inteiro sem anestesia geral.'],
+ ['🦷','Local','Bloqueio reversível da condução em pequena área: suturas, odontologia, oftalmologia.']
+];
+let zonasV=new Set();
+function f1(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 2 · Mapa das anestesias</span>
+   <h2>🗺️ Onde cada anestesia age?</h2>
+   <p>Toque em cada técnica para explorar. <strong>Visite as 5.</strong></p>
+   <div class="corpo">
+    ${ZONAS.map((z,i)=>'<div class="zona" id="z'+i+'" onclick="zona('+i+')"><span class="ic">'+z[0]+'</span>'+z[1]+'</div>').join('')}
+   </div>
+   <div class="detalhe" id="zdet"></div>
+   <div class="destaque">💡 <strong>Combinada</strong> = geral + regional na mesma cirurgia: menos anestésico geral e analgesia residual no pós-operatório.</div>
+  </div>
+  <div class="card">
+   <h3>Agora escalone a técnica para as salas:</h3>
+   <p><strong>Maria (cesariana de urgência):</strong> o bebê precisa nascer logo e a mãe deve ficar acordada para recebê-lo.</p>
+   ${quiz('q1a',[
+    {t:'Anestesia geral balanceada',ok:false,fb:'Possível em emergências extremas, mas deprime o bebê e tira da mãe o momento do nascimento. Para cesariana, o neuroeixo é o padrão.'},
+    {t:'Raquidiana',ok:true,fb:'Isso! Ação rápida com pouca dose de anestésico local no espaço subaracnóideo, mãe acordada e bebê nascendo sem anestésico geral circulando. O preço possível: hipotensão rápida e, depois, cefaleia liquórica.'},
+    {t:'Anestesia local infiltrativa',ok:false,fb:'Infiltração local não cobre uma cirurgia abdominal como a cesariana.'}
+   ])}
+   <p><strong>João (laparoscopia de vesícula):</strong> abdome insuflado com gás, relaxamento muscular e ventilação controlada são obrigatórios.</p>
+   ${quiz('q1b',[
+    {t:'Anestesia geral balanceada',ok:true,fb:'Exato: laparoscopia exige inconsciência, relaxamento muscular com BNM e via aérea garantida. É a sala que vamos acompanhar de perto na próxima fase.'},
+    {t:'Peridural isolada',ok:false,fb:'A peridural não dá o relaxamento e o controle ventilatório que o pneumoperitônio exige.'},
+    {t:'Bloqueio de plexo',ok:false,fb:'Plexos anestesiam membros, não o abdome insuflado de uma laparoscopia.'}
+   ])}
+   <p><strong>Depois da cesariana, Maria desenvolve cefaleia intensa que piora ao sentar. O que aconteceu?</strong></p>
+   ${quiz('q1c',[
+    {t:'Complicação da peridural, pelas doses mais altas',ok:false,fb:'Na peridural a meninge não é rompida, então não há fístula liquórica. As doses maiores se relacionam a hipotensão lenta e risco de depressão respiratória.'},
+    {t:'Cefaleia por hipotensão liquórica da raquidiana',ok:true,fb:'Isso! A punção da dura-máter pode deixar escapar líquor: cefaleia postural que piora sentada e melhora deitada. Marca registrada da raqui.'},
+    {t:'Enxaqueca sem relação com a anestesia',ok:false,fb:'O padrão postural logo após punção de neuroeixo aponta forte para causa liquórica.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av1')}</div>
+ </div>`;
+}
+function zona(i){
+ zonasV.add(i);
+ document.getElementById('z'+i).classList.add('vista');
+ const d=document.getElementById('zdet');
+ d.style.display='block';
+ d.innerHTML='<strong>'+ZONAS[i][1]+':</strong> '+ZONAS[i][2];
+ chk1();
+}
+function chk1(){
+ const ok=zonasV.size>=5&&S.sub['q1a']&&S.sub['q1b']&&S.sub['q1c'];
+ const b=document.getElementById('av1'); if(b){b.disabled=!ok; if(ok)completa(1);}
+}
+/* ===================== F2: INDUÇÃO ===================== */
+function f2(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 3 · Planejando a indução</span>
+   <h2>💉 Monte a anestesia balanceada</h2>
+   <p>A anestesia balanceada combina <strong>hipnótico</strong> (inconsciência) + <strong>opioide</strong> (analgesia) + <strong>BNM</strong> (relaxamento para intubar). A dose de cada um depende de <strong>idade, peso e estabilidade hemodinâmica</strong>.</p>
+   <div class="timeline">
+    <div class="tl"><strong>Premedicação:</strong> ansiólise (midazolam, diazepam).</div>
+    <div class="tl"><strong>Indução:</strong> hipnótico + opioide + BNM para intubação.</div>
+    <div class="tl"><strong>Manutenção:</strong> inalatório (e/ou infusão venosa) + analgesia contínua.</div>
+    <div class="tl"><strong>Recuperação:</strong> suspensão dos agentes, reversão do BNM, despertar monitorado.</div>
+   </div>
+  </div>
+  <div class="card">
+   <h3>Sala 1 · João, 55 anos</h3>
+   <p>Eletivo, jejum de 8 horas cumprido. Avaliação pré-anestésica tranquila: PA 128x82 mmHg, FC 76, sem alergias, sem cardiopatia. Recebeu midazolam na premedicação e o plano é intubar com calma e manter com gás. O que pesa aqui: paciente <strong>estável</strong>, sem pressa, priorizando indução suave e despertar rápido.</p>
+   ${quiz('q2a',[
+    {t:'Fentanil + Etomidato + Succinilcolina',ok:false,fb:'Esse é o pacote da sequência rápida: etomidato cardioestável e succinilcolina ultrarrápida. João está estável, de jejum cumprido, sem necessidade de pressa: guarde essa combinação para quem precisa dela.'},
+    {t:'Fentanil + Propofol + Rocurônio',ok:true,fb:'Perfeito. Com PA e coração normais, o propofol pode exercer sua vasodilatação sem drama, entregando indução e recuperação rápidas e suaves. O rocurônio, adespolarizante sem histamina, dá o relaxamento para a intubação sem urgência. Foi o esquema real do João.'},
+    {t:'Fentanil + Midazolam + Rocurônio',ok:false,fb:'O midazolam como hipnótico principal torna indução e despertar lentos; ele já cumpriu seu papel na premedicação ansiolítica. Para induzir eletivo estável, o padrão é o propofol.'}
+   ])}
+  </div>
+  <div class="card">
+   <h3>Sala 4 · Ana, 28 anos</h3>
+   <p>Politrauma de moto, chegou <strong>chocada</strong>: PA 78x50 mmHg, FC 132, pele fria, FAST positivo (sangue no abdome). Jantou 1 hora antes do acidente: <strong>estômago cheio</strong>, alto risco de broncoaspiração. A equipe precisa da via aérea protegida AGORA, sem derrubar ainda mais a pressão.</p>
+   ${quiz('q2b',[
+    {t:'Fentanil + Etomidato + Succinilcolina',ok:true,fb:'Isso! Sequência rápida clássica: o etomidato é cardioestável (não derruba a PA de quem já está em 78x50) e a succinilcolina é o BNM de início mais rápido que existe, encurtando o tempo entre perder os reflexos e proteger a via aérea com o tubo.'},
+    {t:'Fentanil + Propofol + Rocurônio',ok:false,fb:'O propofol causa vasodilatação e queda de PA: em choque hipovolêmico, pode precipitar colapso. E com estômago cheio, cada segundo sem via aérea protegida é risco de broncoaspiração.'},
+    {t:'Fentanil + Midazolam + Rocurônio',ok:false,fb:'Hipnose lenta demais para um estômago cheio que precisa de tubo imediato, e o midazolam também derruba a pressão de pacientes hipovolêmicos.'}
+   ])}
+  </div>
+  <div class="card">
+   <h3>Sala extra · Rafael, 25 anos</h3>
+   <p>Redução de fratura de punho + curativo de queimadura no antebraço: procedimento <strong>curto e muito doloroso</strong>. O anestesista quer um único agente venoso que entregue <strong>anestesia E analgesia potente ao mesmo tempo</strong>, mantendo o paciente respirando sozinho, sem precisar associar opioide.</p>
+   ${quiz('q2c',[
+    {t:'Propofol',ok:false,fb:'O propofol hipnotiza lindamente, mas não tem ação analgésica: sozinho, Rafael dormiria sentindo dor. Precisaria de opioide junto.'},
+    {t:'Etomidato',ok:false,fb:'O etomidato é cardioestável, mas é hipnótico sem ação analgésica: não resolve a dor do procedimento.'},
+    {t:'Quetamina',ok:true,fb:'Exato! A quetamina é o anestésico venoso com analgesia potente própria: promove anestesia dissociativa, preserva o drive respiratório e sustenta a pressão. Para procedimento curto e doloroso, um agente só faz o serviço completo, dispensando o opioide. Os detalhes dela vêm na Fase 7.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av2')}</div>
+ </div>`;
+}
+function chk2(){
+ const ok=S.sub['q2a']&&S.sub['q2b']&&S.sub['q2c'];
+ const b=document.getElementById('av2'); if(b){b.disabled=!ok; if(ok)completa(2);}
+}
+</script>
+<script>
+/* ===================== F3: MECANISMO DOS GERAIS ===================== */
+const ALVOS=[
+ {n:'Receptor GABA-A',tipo:'pot',exp:'O anestésico POTENCIA o GABA-A: mais cloreto entra, o neurônio hiperpolariza e a excitabilidade despenca. É o alvo do propofol, do etomidato, do tiopental e de boa parte dos inalatórios.'},
+ {n:'Receptor de glicina',tipo:'pot',exp:'Também inibitório: o anestésico POTENCIA a glicina, reforçando a hiperpolarização, principalmente na medula.'},
+ {n:'Receptor NMDA (glutamato)',tipo:'ini',exp:'Excitatório: o anestésico INIBE o NMDA, cortando a transmissão do glutamato. É o alvo da quetamina (antagonista) e contribui para o tiopental e o óxido nitroso.'},
+ {n:'Receptor nicotínico (nACh)',tipo:'ini',exp:'Excitatório: INIBIDO pelos anestésicos, soma-se ao silenciamento da sinapse.'},
+ {n:'Canais de K⁺',tipo:'pot',exp:'O anestésico favorece a ABERTURA dos canais de potássio: K⁺ sai, a membrana hiperpolariza e o neurônio fica refratário.'}
+];
+let alvoOk={};
+function f3(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 4 · Dentro da sinapse</span>
+   <h2>🧠 Como os anestésicos gerais desligam o cérebro</h2>
+   <p>A lógica é uma só: <strong>aumentar o freio e cortar o acelerador</strong>. Freio = transmissão inibitória (GABA, glicina, canais de K⁺). Acelerador = transmissão excitatória (glutamato/NMDA, acetilcolina/nACh).</p>
+   <p>Para cada alvo, decida: o anestésico geral <strong>potencia</strong> ou <strong>inibe</strong>?</p>
+   ${ALVOS.map((a,i)=>`
+   <div class="alvo">
+    <h4>${a.n}</h4>
+    <div class="chips">
+     <span class="chip" id="al${i}pot" onclick="alvo(${i},'pot')">⬆️ Potencia</span>
+     <span class="chip" id="al${i}ini" onclick="alvo(${i},'ini')">⬇️ Inibe</span>
+    </div>
+    <div class="feed" id="alfb${i}"></div>
+   </div>`).join('')}
+  </div>
+  <div class="card">
+   <h3>Fixando o mapa dos venosos:</h3>
+   <p>Qual destes pares mecanismo-fármaco está CORRETO?</p>
+   ${quiz('q3',[
+    {t:'Quetamina: agonista GABA-A',ok:false,fb:'A quetamina é a exceção da turma: ANTAGONISTA do receptor NMDA, por isso a anestesia dissociativa. Quem vive de GABA-A são propofol, etomidato e tiopental.'},
+    {t:'Propofol e etomidato: agonistas GABA-A',ok:true,fb:'Isso! Propofol e etomidato potenciam o GABA-A. O tiopental soma agonismo GABA-A com antagonismo NMDA. E a quetamina fica sozinha no time do NMDA, como antagonista.'},
+    {t:'Tiopental: antagonista puro do nACh',ok:false,fb:'O tiopental age como agonista GABA-A e antagonista NMDA; o receptor nicotínico não é o palco principal dele.'}
+   ])}
+   <div class="destaque">🌬️ <strong>E os inalatórios?</strong> Agem em múltiplos alvos ao mesmo tempo: potenciam GABA-A e glicina, abrem canais de K⁺ e inibem NMDA e nACh. Com menos cálcio entrando no terminal, caem também a liberação de neurotransmissores excitatórios: o córtex silencia.</div>
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av3')}</div>
+ </div>`;
+}
+function alvo(i,t){
+ if(alvoOk[i])return;
+ const certa=ALVOS[i].tipo===t;
+ const c=document.getElementById('al'+i+t);
+ const fb=document.getElementById('alfb'+i);
+ if(certa){
+  c.classList.add('certa');
+  document.getElementById('al'+i+(t==='pot'?'ini':'pot')).style.opacity=.4;
+  fb.className='feed ok'; fb.innerHTML='✅ '+ALVOS[i].exp;
+  alvoOk[i]=1; pts(5);
+ } else {
+  c.classList.add('errada'); setTimeout(()=>c.classList.remove('errada'),900);
+  fb.className='feed erro'; fb.innerHTML='❌ Pense: esse alvo é freio ou acelerador da sinapse?';
+ }
+ chk3();
+}
+function chk3(){
+ const ok=ALVOS.every((_,i)=>alvoOk[i])&&S.sub['q3'];
+ const b=document.getElementById('av3'); if(b){b.disabled=!ok; if(ok)completa(3);}
+}
+/* ===================== F4: BNM ===================== */
+const BNMDRUGS=[
+ ['Succinilcolina','desp','Única despolarizante em uso: agonista nicotínico que despolariza (fase I, fasciculações e paralisia flácida) e depois dessensibiliza a placa (fase II).'],
+ ['Rocurônio','amino','Aminoesteroide adespolarizante: antagonista competitivo, não tende a liberar histamina. Foi o BNM do João.'],
+ ['Pancurônio','amino','Aminoesteroide adespolarizante, sem tendência a liberar histamina.'],
+ ['Vecurônio','amino','Aminoesteroide adespolarizante, sem tendência a liberar histamina.'],
+ ['Atracúrio','benzil','Benzilisoquinolínico adespolarizante: pode causar liberação de histamina.'],
+ ['Tubocurarina','benzil','Benzilisoquinolínico clássico: antagonista competitivo, causa liberação de histamina.']
+];
+let bnmCls={};
+function f4(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 5 · O relaxamento muscular</span>
+   <h2>💪 Dois jeitos de parar um músculo</h2>
+   <p>Os BNM são estruturalmente semelhantes à acetilcolina e atuam no receptor nicotínico da junção neuromuscular, relaxando a musculatura esquelética e favorecendo a intubação orotraqueal.</p>
+   <div class="grade2">
+    <div class="destaque"><strong>🔓 Despolarizante (succinilcolina):</strong> AGONISTA. Fase I: despolariza a membrana, descarga inicial com fasciculações e paralisia flácida. Fase II: a membrana repolariza, mas o receptor fica dessensibilizado à acetilcolina.</div>
+    <div class="destaque"><strong>🔒 Adespolarizante (rocurônio, atracúrio...):</strong> ANTAGONISTA competitivo do receptor nicotínico: ocupa o lugar da acetilcolina sem ativar. Reversível com anticolinesterásicos, como a neostigmina.</div>
+   </div>
+   <h3>Classifique cada fármaco:</h3>
+   ${BNMDRUGS.map((d,i)=>`
+    <div style="margin-bottom:10px">
+     <strong style="font-size:.85rem">${d[0]}</strong>
+     <div class="chips">
+      <span class="chip" id="b${i}desp" onclick="bnm(${i},'desp')">Despolarizante</span>
+      <span class="chip" id="b${i}amino" onclick="bnm(${i},'amino')">Adespolarizante aminoesteroide</span>
+      <span class="chip" id="b${i}benzil" onclick="bnm(${i},'benzil')">Adespolarizante benzilisoquinolínico</span>
+     </div>
+     <div class="feed" id="bfb${i}"></div>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+   <h3>Efeitos colaterais da succinilcolina</h3>
+   <p>Mialgias, fasciculações, <strong>hipercalemia</strong>, arritmias, aumento das pressões intragástrica, intraocular e intracraniana, e risco de <strong>hipertermia maligna</strong> (guarde o nome: Fase 8).</p>
+   <p>O residente pergunta: "o paciente ainda está bloqueado com rocurônio, reverto com o quê?"</p>
+   ${quiz('q4',[
+    {t:'Dantroleno',ok:false,fb:'Dantroleno trata hipertermia maligna, não reverte bloqueio neuromuscular.'},
+    {t:'Neostigmina',ok:true,fb:'Isso! O anticolinesterásico aumenta a acetilcolina na fenda e desloca o antagonista competitivo. Vale para os ADESPOLARIZANTES; a succinilcolina não é revertida assim.'},
+    {t:'Mais succinilcolina',ok:false,fb:'Somar um despolarizante aprofundaria o bloqueio, além de misturar mecanismos.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av4')}</div>
+ </div>`;
+}
+function bnm(i,fam){
+ if(bnmCls[i]==='ok')return;
+ const certa=BNMDRUGS[i][1]===fam;
+ const fb=document.getElementById('bfb'+i);
+ const c=document.getElementById('b'+i+fam);
+ if(certa){
+  c.classList.add('certa');
+  ['desp','amino','benzil'].forEach(f=>{if(f!==fam)document.getElementById('b'+i+f).style.opacity=.4;});
+  fb.className='feed ok'; fb.innerHTML='✅ '+BNMDRUGS[i][2];
+  bnmCls[i]='ok';pts(5);
+ } else {
+  c.classList.add('errada'); setTimeout(()=>c.classList.remove('errada'),900);
+  fb.className='feed erro'; fb.innerHTML='❌ Ainda não. Pense: agonista que despolariza, ou antagonista competitivo? E a estrutura libera histamina?';
+ }
+ chk4();
+}
+function chk4(){
+ const ok=BNMDRUGS.every((_,i)=>bnmCls[i]==='ok')&&S.sub['q4'];
+ const b=document.getElementById('av4'); if(b){b.disabled=!ok; if(ok)completa(4);}
+}
+/* ===================== F5: INALATÓRIOS ===================== */
+const GASES=[
+ ['Óxido nitroso',1.01,1.4,'Baixa potência (CAM acima de 1: sozinho não mantém anestesia cirúrgica); não irritante; efeito moderado ou nulo sobre o sistema cardiovascular; <span class="vermelho">menos hepatotóxico</span>. O "gás hilariante" entra como coadjuvante.'],
+ ['Desflurano',0.06,19,'Indução e recuperação rápidas: cirurgias ambulatoriais. <span class="vermelho">Alto custo</span>: não usado em cirurgia de longa duração.'],
+ ['Sevoflurano',0.02,51,'<span class="vermelho">Mais seguro</span>; usado em crianças; indução e recuperação rápidas sem irritar as vias aéreas; baixa pungência. Está substituindo o halotano. Foi o gás do João.'],
+ ['Isoflurano',0.0114,98,'<span class="vermelho">Pungente</span> (tosse, secreções, irritante das vias aéreas); usado na obstetrícia; não hepatotóxico; indução mais rápida que o halotano; usado quando o <span class="vermelho">custo é um fator limitante</span>.'],
+ ['Halotano',0.0077,224,'<span class="vermelho">Bem tolerado em asmáticos</span>; alta potência (CAM baixíssima); indução e manutenção lentas; <span class="vermelho">contraindicado em pacientes com lesão hepática</span>; odor não irritante.']
+];
+let gasV=new Set();
+function f5(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 6 · Dormindo com gases</span>
+   <h2>🌬️ Laboratório de CAM</h2>
+   <p>A manutenção do João é inalatória. Regra de ouro: quanto maior a <strong>lipossolubilidade</strong>, menor a <strong>CAM</strong> (concentração alveolar mínima) e maior a potência. Deslize e explore os 5 agentes:</p>
+   <div class="painel">
+    <div class="tit">Lipossolubilidade (coef. óleo/gás): <span id="lipoV" style="letter-spacing:0">1,4</span></div>
+    <input type="range" min="0" max="4" value="0" id="lipo" oninput="gas(this.value)">
+    <div class="monitor m3">
+     <div class="mon"><b>Agente</b><span id="gNome">Óxido nitroso</span></div>
+     <div class="mon"><b>CAM</b><span id="gCam">1,01</span></div>
+     <div class="mon"><b>Potência</b><span id="gPot">★</span></div>
+    </div>
+   </div>
+   <div class="detalhe" id="gDet" style="display:block">O "gás hilariante" entra como coadjuvante: baixa potência, não irritante, pouco efeito cardiovascular.</div>
+   <p class="nota" id="gDica">Agentes explorados: 1/5</p>
+  </div>
+  <div class="card">
+   <h3>Escalone o gás certo:</h3>
+   <p><strong>Cenário A:</strong> criança de 6 anos, via aérea sensível.</p>
+   ${quiz('q5a',[
+    {t:'Isoflurano',ok:false,fb:'Pungente e irritante das vias aéreas: tosse e secreção na indução de uma criança não é um bom plano.'},
+    {t:'Sevoflurano',ok:true,fb:'Isso! O mais seguro, de baixa pungência, indução suave e rápida: o agente de escolha em pediatria.'},
+    {t:'Halotano',ok:false,fb:'Já foi o clássico da pediatria, mas indução lenta e risco hepático fizeram o sevoflurano substituí-lo.'}
+   ])}
+   <p><strong>Cenário B:</strong> hospital com orçamento apertado, adulto hígido.</p>
+   ${quiz('q5b',[
+    {t:'Desflurano',ok:false,fb:'Recuperação rápida, mas alto custo: justamente o que o cenário não comporta.'},
+    {t:'Isoflurano',ok:true,fb:'Exato: é o agente lembrado quando o custo é um fator limitante, não hepatotóxico e com indução mais rápida que o halotano. A pungência é o preço.'},
+    {t:'Óxido nitroso sozinho',ok:false,fb:'Com CAM acima de 1, sozinho ele não mantém anestesia cirúrgica.'}
+   ])}
+   <p><strong>Cenário C:</strong> paciente asmático grave, mas com hepatite em atividade. A equipe sugere halotano pelo histórico de asma. Qual o problema?</p>
+   ${quiz('q5c',[
+    {t:'Nenhum: halotano é bem tolerado em asmáticos',ok:false,fb:'A primeira metade é verdadeira, o halotano é bem tolerado em asmáticos. Mas o fígado deste paciente veta a escolha: releia a contraindicação.'},
+    {t:'O halotano é hepatotóxico: contraindicado na lesão hepática',ok:true,fb:'Isso! O halotano é o inalatório da hepatotoxicidade clássica (hepatite por halotano): com lesão hepática em atividade, está contraindicado. Entre broncoespasmo e fígado, procura-se outro plano, como o sevoflurano.'},
+    {t:'O halotano é o mais pungente de todos',ok:false,fb:'O pungente da turma é o isoflurano; o halotano tem odor não irritante. O problema dele aqui é o fígado.'}
+   ])}
+   <div class="destaque">⚠️ <strong>Reações adversas dos inalatórios:</strong> hipotensão, arritmias cardíacas e a temida <strong>hipertermia maligna</strong>: aumento descontrolado da liberação de cálcio nas células musculares, tratado com DANTROLENO. Ela é a Fase 8.</div>
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av5')}</div>
+ </div>`;
+}
+function gas(v){
+ v=+v; const G=GASES[v];
+ document.getElementById('lipoV').textContent=String(G[2]).replace('.',',');
+ document.getElementById('gNome').textContent=G[0];
+ document.getElementById('gCam').textContent=String(G[1]).replace('.',',');
+ document.getElementById('gPot').textContent='★'.repeat(v+1);
+ const d=document.getElementById('gDet'); d.style.display='block'; d.innerHTML='<strong>'+G[0]+':</strong> '+G[3];
+ gasV.add(v);
+ document.getElementById('gDica').textContent='Agentes explorados: '+gasV.size+'/5';
+ chk5();
+}
+function chk5(){
+ const ok=gasV.size>=5&&S.sub['q5a']&&S.sub['q5b']&&S.sub['q5c'];
+ const b=document.getElementById('av5'); if(b){b.disabled=!ok; if(ok)completa(5);}
+}
+/* ===================== F6: DOSSIÊS VENOSOS ===================== */
+const DOSSIES=[
+ ['💉 Propofol','Agonista GABA-A. Indução e recuperação rápidas. <span class="vermelho">Não causa náuseas e êmese</span>: querido nas cirurgias ambulatoriais. Preço hemodinâmico: <span class="vermelho">vasodilatação com queda de PA</span> e depressão cardiovascular. Vem substituindo o tiopental na indução. Curiosidade sombria: foi o fármaco envolvido na morte de Michael Jackson, usado fora do ambiente hospitalar, sem monitorização.'],
+ ['🛡️ Etomidato','Agonista GABA-A. Indução rápida e <span class="vermelho">cardioestável</span>: o escolhido quando a hemodinâmica preocupa. Mas é hipnótico <span class="vermelho">sem ação analgésica</span> e <span class="vermelho">inibe a síntese de cortisol</span>: por isso <span class="vermelho">não deve ser infundido por longos períodos</span>, sob risco de supressão adrenal.'],
+ ['🌀 Quetamina','Antagonista do receptor NMDA. Produz <span class="vermelho">anestesia dissociativa: desconexão percebida entre a mente e o corpo</span>, com analgesia potente. Causa <span class="vermelho">hipertensão: escolha no choque</span>; taquiarritmias; mioclonia; depressão respiratória em bolus rápido; <span class="vermelho">aumenta a pressão intracraniana</span>; provoca <span class="vermelho">sonhos realistas e alucinações</span> no despertar. Pouco usada em anestesia de rotina; tem uso recreativo (DFC).'],
+ ['🧪 Tiopental','Agonista GABA-A e antagonista NMDA. Barbitúrico de <span class="vermelho">ação ultracurta</span>: <span class="vermelho">potente anestésico, mas analgésico fraco</span> (precisa de analgesia associada). RAM: <span class="vermelho">anemia hemolítica</span>, depressão cardiovascular e respiratória, <span class="vermelho">espasmos da laringe</span>. Perdeu o posto para o propofol.']
+];
+let dossieV=new Set();
+function f6(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 7 · Os venosos no detalhe</span>
+   <h2>💤 Dossiês confidenciais da farmácia</h2>
+   <p>Os anestésicos intravenosos pertencem a grupos químicos diferentes, com mecanismos diversos: barbitúricos, benzodiazepínicos, propofol, etomidato, cetamina e opioides em altas doses. Abra os 4 dossiês e leia as fichas: <strong>os destaques em vermelho caem em prova e aparecem na prática.</strong></p>
+   ${DOSSIES.map((d,i)=>`
+   <div class="dossie" id="do${i}">
+    <div class="cab" onclick="dossie(${i})">${d[0]} <span class="st" id="dost${i}">tocar para abrir</span></div>
+    <div class="corpoD">${d[1]}</div>
+   </div>`).join('')}
+   <p class="nota" id="doDica">Dossiês abertos: 0/4</p>
+  </div>
+  <div class="card">
+   <h3>Teste os dossiês:</h3>
+   <p>A UTI quer sedação contínua por 5 dias e alguém sugere etomidato em infusão. Qual o problema?</p>
+   ${quiz('q6a',[
+    {t:'O etomidato causa vasodilatação intensa',ok:false,fb:'Essa é a assinatura do propofol; o etomidato é justamente o cardioestável da turma.'},
+    {t:'O etomidato inibe a síntese de cortisol: infusão prolongada suprime a adrenal',ok:true,fb:'Isso! A inibição do cortisol é tolerável num bolus de indução, mas em infusão prolongada vira insuficiência adrenal. Por isso o etomidato não deve ser infundido por longos períodos.'},
+    {t:'O etomidato causa alucinações no despertar',ok:false,fb:'Sonhos vívidos e alucinações são a marca da quetamina, não do etomidato.'}
+   ])}
+   <p>Um paciente acorda relatando que "via o próprio corpo de fora, como num sonho real". Qual agente foi usado e qual o mecanismo?</p>
+   ${quiz('q6b',[
+    {t:'Quetamina, antagonista NMDA: anestesia dissociativa',ok:true,fb:'Exato! A desconexão percebida entre a mente e o corpo é a anestesia dissociativa da quetamina, fruto do antagonismo NMDA, junto com os sonhos realistas do despertar.'},
+    {t:'Propofol, agonista GABA-A em dose alta',ok:false,fb:'O propofol dá hipnose suave e despertar claro, sem fenômeno dissociativo.'},
+    {t:'Tiopental, pelo acúmulo em tecido adiposo',ok:false,fb:'O tiopental redistribui e acumula, mas não produz dissociação mente-corpo.'}
+   ])}
+   <p>Por que o tiopental, mesmo sendo potente anestésico, nunca segura um procedimento doloroso sozinho?</p>
+   ${quiz('q6c',[
+    {t:'Porque é analgésico fraco: precisa de analgesia associada',ok:true,fb:'Isso! Hipnose profunda não é analgesia: o tiopental apaga, mas não cobre a dor. Na balanceada, o opioide (ou a quetamina, quando ela é o plano) cumpre esse papel.'},
+    {t:'Porque tem ação longa demais',ok:false,fb:'É o contrário: ação ultracurta, por redistribuição rápida.'},
+    {t:'Porque aumenta o cortisol',ok:false,fb:'Cortisol é o capítulo do etomidato (inibição). O limite do tiopental é a analgesia fraca.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av6')}</div>
+ </div>`;
+}
+function dossie(i){
+ const d=document.getElementById('do'+i);
+ d.classList.toggle('aberto');
+ dossieV.add(i);
+ document.getElementById('dost'+i).textContent=d.classList.contains('aberto')?'aberto':'lido';
+ document.getElementById('doDica').textContent='Dossiês abertos: '+dossieV.size+'/4';
+ chk6();
+}
+function chk6(){
+ const ok=dossieV.size>=4&&S.sub['q6a']&&S.sub['q6b']&&S.sub['q6c'];
+ const b=document.getElementById('av6'); if(b){b.disabled=!ok; if(ok)completa(6);}
+}
+</script>
+<script>
+/* ===================== F7: CÓDIGO VERMELHO ===================== */
+function f7(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 8 · Código vermelho</span>
+   <div class="alarme">
+    <strong>🚨 ALARME NA SALA 3</strong><br>
+    <span style="font-size:.85rem">Paciente em anestesia com sevoflurano, recebeu succinilcolina na indução. Agora: rigidez muscular generalizada com espasmo de masseter, temperatura 38,8 °C e subindo, taquicardia sinusal evoluindo com taquiarritmia, acidose respiratória e metabólica, CK acima de 10.000, mioglobina na urina, potássio 6 mEq/L. Há história familiar parecida.</span>
+   </div>
+   <h3>O que está acontecendo?</h3>
+   ${quiz('q7a',[
+    {t:'Reação anafilática ao bloqueador',ok:false,fb:'Anafilaxia traria hipotensão, broncoespasmo e pele acometida; não explica rigidez com hipertermia, acidose dupla e CK altíssima.'},
+    {t:'Hipertermia maligna',ok:true,fb:'Isso! Doença farmacogenética (herança autossômica dominante) deflagrada por inalatórios e succinilcolina: liberação descontrolada de cálcio nas células musculares, com rigidez, hipertermia, acidose, rabdomiólise e hipercalemia.'},
+    {t:'Bloqueio residual por rocurônio',ok:false,fb:'Bloqueio residual dá fraqueza e hipoventilação no despertar, não rigidez com febre e acidose.'}
+   ])}
+   <h3>Conduta farmacológica imediata:</h3>
+   ${quiz('q7b',[
+    {t:'Neostigmina',ok:false,fb:'Neostigmina reverte bloqueio adespolarizante; não tem papel aqui.'},
+    {t:'Dantroleno',ok:true,fb:'Correto! O dantroleno bloqueia a liberação de cálcio do retículo sarcoplasmático, interrompendo a cascata. Suspender os deflagradores e resfriar completam o pacote. Saber ONDE está o dantroleno da farmácia salva vidas.'},
+    {t:'Adrenalina',ok:false,fb:'Adrenalina é o pilar da anafilaxia; não interrompe a liberação de cálcio da hipertermia maligna.'}
+   ])}
+   <div class="destaque">💊 <strong>Papel do farmacêutico:</strong> dantroleno disponível e na validade, domínio do preparo (reconstituição demorada, muitos frascos) e sinalização de pacientes com história pessoal ou familiar para evitarem succinilcolina e halogenados.</div>
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av7')}</div>
+ </div>`;
+}
+function chk7(){
+ const ok=S.sub['q7a']&&S.sub['q7b'];
+ const b=document.getElementById('av7'); if(b){b.disabled=!ok; if(ok)completa(7);}
+}
+/* ===================== F8: HISTÓRIA DA COCAÍNA ===================== */
+const CAPS=[
+ ['🌿 Capítulo 1 · Da folha sagrada à substância pura',
+  'Antes dos anestésicos locais, as opções eram anestesia geral com éter ou clorofórmio (alta mortalidade) ou cirurgia "a frio", com dor extrema. Durante milênios, os povos andinos mascaram folhas de coca (Erythroxylum coca) contra cansaço, fome e dor, e já notavam a dormência na boca e na língua. Em 1860, o químico alemão Albert Niemann isolou o alcaloide puro e o batizou de cocaína, registrando que a substância "adormecia a língua, privando-a de sensibilidade".'],
+ ['👁️ Capítulo 2 · Freud, Koller e o olho (1884)',
+  'Em Viena, o jovem Sigmund Freud estudava a cocaína acreditando que ela curaria a depressão e a dependência de morfina (chegou a consumi-la e receitá-la a amigos). Comentou as propriedades entorpecentes com o oftalmologista Carl Koller, que viu ali a solução de um pesadelo: nas cirurgias oculares, a anestesia geral fazia o paciente tossir e vomitar, aumentando a pressão ocular e destruindo o olho. Em setembro de 1884, Koller pingou cocaína nos olhos de um sapo e de um coelho, depois no próprio olho e no de um colega, e dias depois realizou a primeira cirurgia ocular indolor da história.'],
+ ['🌍 Capítulo 3 · A revolução das anestesias regionais',
+  'A descoberta se espalhou em semanas. Em 1884, o cirurgião americano William Halsted (fundador da cirurgia moderna no Johns Hopkins) passou a injetar cocaína ao redor de nervos específicos, criando o bloqueio de nervos para anestesiar braço ou mandíbula. Em 1898, o alemão August Bier realizou a primeira anestesia raquidiana da história, injetando cocaína no espaço subaracnóideo de um paciente, e depois testou no próprio assistente.'],
+ ['🌑 Capítulo 4 · O lado sombrio',
+  'O entusiasmo virou pesadelo: muitos pioneiros, incluindo Halsted, tornaram-se gravemente dependentes experimentando a droga em si mesmos. Nos pacientes, a cocaína causava convulsões, paradas cardíacas, colapso metabólico e dependência severa, além de vasoconstrição tão intensa que levava a necroses teciduais.'],
+ ['💡 Capítulo 5 · O legado',
+  'A indústria correu atrás de compostos com o poder anestésico sem o vício e a toxicidade. Em 1904, Alfred Einhorn sintetizou a procaína (Novocaína), o primeiro anestésico local sintético seguro, aposentando a cocaína da prática médica. Nos anos 1940 chegou a lidocaína, até hoje a base dos anestésicos locais e regionais modernos. Todo canal tratado, corte suturado e cirurgia sob anestesia local começou nos estudos da cocaína no século XIX.']
+];
+let capsV=new Set();
+function f8(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 9 · A história que mudou a cirurgia</span>
+   <h2>🌿 Da folha de coca à lidocaína</h2>
+   <p>Antes de dominar os anestésicos locais de hoje, conheça a história do primeiro deles. Abra os 5 capítulos:</p>
+   ${CAPS.map((c,i)=>`
+   <div class="capitulo" id="cap${i}">
+    <div class="cabc" onclick="capit(${i})">${c[0]}</div>
+    <div class="txtc">${c[1]}</div>
+   </div>`).join('')}
+   <p class="nota" id="capDica">Capítulos lidos: 0/5</p>
+  </div>
+  <div class="card">
+   <h3>Quiz da história:</h3>
+   <p>Quem realizou a primeira cirurgia ocular indolor da história, e em que ano?</p>
+   ${quiz('q8a',[
+    {t:'Sigmund Freud, 1884',ok:false,fb:'Freud estudou a cocaína e espalhou a notícia, mas quem a levou ao centro cirúrgico foi seu colega oftalmologista.'},
+    {t:'Carl Koller, 1884',ok:true,fb:'Isso! Depois de testar em sapo, coelho e no próprio olho, Koller operou o primeiro olho sem dor da história, em setembro de 1884.'},
+    {t:'August Bier, 1898',ok:false,fb:'Bier fez história, mas com a primeira anestesia raquidiana, em 1898.'}
+   ])}
+   <p>E a primeira raquidiana, com cocaína no espaço subaracnóideo?</p>
+   ${quiz('q8b',[
+    {t:'August Bier, 1898, que depois testou no próprio assistente',ok:true,fb:'Exato! Bier inaugurou a raquidiana em 1898, e o assistente entrou na história junto.'},
+    {t:'William Halsted, 1884',ok:false,fb:'Halsted criou o bloqueio de nervos, injetando cocaína ao redor de nervos específicos, e pagou caro: tornou-se dependente nos autoexperimentos.'},
+    {t:'Albert Niemann, 1860',ok:false,fb:'Niemann foi o químico que isolou a cocaína em 1860, décadas antes do uso cirúrgico.'}
+   ])}
+   <p>Qual composto aposentou a cocaína como anestésico, e qual é a base dos anestésicos modernos?</p>
+   ${quiz('q8c',[
+    {t:'Procaína (Novocaína, 1904) e, depois, lidocaína (anos 1940)',ok:true,fb:'Isso! A procaína de Einhorn foi o primeiro sintético seguro; a lidocaína, dos anos 1940, é até hoje a referência dos anestésicos locais e regionais.'},
+    {t:'Benzocaína (1900) e tetracaína (1930)',ok:false,fb:'Ambas existem na família dos ésteres, mas o marco histórico foi a procaína, seguida pela lidocaína.'},
+    {t:'Éter (1846) e clorofórmio (1847)',ok:false,fb:'Esses são anestésicos GERAIS da era pré-cocaína, justamente os de alta mortalidade que motivaram a busca por anestesia local.'}
+   ])}
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av8')}</div>
+ </div>`;
+}
+function capit(i){
+ document.getElementById('cap'+i).classList.toggle('aberto');
+ capsV.add(i);
+ document.getElementById('capDica').textContent='Capítulos lidos: '+capsV.size+'/5';
+ chk8();
+}
+function chk8(){
+ const ok=capsV.size>=5&&S.sub['q8a']&&S.sub['q8b']&&S.sub['q8c'];
+ const b=document.getElementById('av8'); if(b){b.disabled=!ok; if(ok)completa(8);}
+}
+/* ===================== F9: CANAL DE SÓDIO + LAB AL ===================== */
+const ALDRUGS=[
+ ['Lidocaína','amida'],['Procaína','ester'],['Bupivacaína','amida'],['Tetracaína','ester'],
+ ['Mepivacaína','amida'],['Benzocaína','ester'],['Prilocaína','amida'],['Cocaína','ester']
+];
+let alCls={}, phVisto={s:false,i:false}, canalPasso=0;
+const PASSOS=[
+ 'O anestésico local (AL) está fora do neurônio. Só a forma NÃO IONIZADA (lipofílica) atravessa a membrana. Toque em "Próximo passo".',
+ '1️⃣ A forma não ionizada atravessou a bicamada lipídica e está no citoplasma.',
+ '2️⃣ No citoplasma, o AL se reioniza (ganha H⁺): é a forma IONIZADA que tem afinidade pelo sítio de ligação.',
+ '3️⃣ O AL ionizado entra pelo LADO DE DENTRO do canal de sódio.',
+ '4️⃣ BLOQUEIO! Com o canal ocupado, o Na⁺ não entra, o potencial de ação não dispara e a condução do impulso é interrompida: a dor não viaja. Bloqueio reversível: o AL sai, o canal volta a funcionar.'
+];
+function svgCanal(p){
+ const alFora=p<1, alCito=p===1, alIon=p===2, alCanal=p>=3, bloq=p>=4;
+ return `
+ <svg viewBox="0 0 560 300" style="width:100%;background:#F8FBFA;border-radius:12px">
+  <text x="14" y="24" font-size="13" fill="#6B7280">EXTRACELULAR</text>
+  <text x="14" y="290" font-size="13" fill="#6B7280">INTRACELULAR (citoplasma)</text>
+  <rect x="0" y="120" width="225" height="50" fill="#B8A88E"/>
+  <rect x="335" y="120" width="225" height="50" fill="#B8A88E"/>
+  <rect x="225" y="105" width="38" height="80" rx="7" fill="${bloq?'#DC2626':'#0F766E'}"/>
+  <rect x="297" y="105" width="38" height="80" rx="7" fill="${bloq?'#DC2626':'#0F766E'}"/>
+  <text x="280" y="98" font-size="13" font-weight="bold" fill="${bloq?'#DC2626':'#0F766E'}" text-anchor="middle">canal de Na⁺ ${bloq?'BLOQUEADO':'aberto'}</text>
+  ${[0,1,2].map(k=>`<circle cx="${250+k*25}" cy="${bloq?55:40}" r="10" fill="#D97706"/><text x="${250+k*25}" y="${bloq?59:44}" font-size="8.5" fill="#fff" text-anchor="middle">Na⁺</text>`).join('')}
+  ${bloq?'<text x="281" y="150" font-size="26" font-weight="bold" fill="#fff" text-anchor="middle">✕</text>':`<path d="M281 60 L281 100" stroke="#D97706" stroke-width="3" marker-end="url(#f1)"/>`}
+  <defs><marker id="f1" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#D97706"/></marker>
+  <marker id="f2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#134E4A"/></marker></defs>
+  ${alFora?`<circle cx="110" cy="60" r="16" fill="#134E4A"/><text x="110" y="65" font-size="10" fill="#fff" text-anchor="middle">AL</text><text x="110" y="36" font-size="11" fill="#134E4A" text-anchor="middle">não ionizado (B)</text>${p===0?'<path d="M110 80 L110 112" stroke="#134E4A" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#f2)"/>':''}`:''}
+  ${alCito?`<circle cx="110" cy="230" r="16" fill="#134E4A"/><text x="110" y="235" font-size="10" fill="#fff" text-anchor="middle">AL</text><text x="110" y="262" font-size="11" fill="#134E4A" text-anchor="middle">atravessou a membrana</text>`:''}
+  ${alIon?`<circle cx="190" cy="230" r="16" fill="#0F766E"/><text x="190" y="235" font-size="9" fill="#fff" text-anchor="middle">ALH⁺</text><text x="190" y="262" font-size="11" fill="#0F766E" text-anchor="middle">forma ionizada (+H⁺)</text>`:''}
+  ${alCanal?`<circle cx="280" cy="${bloq?172:205}" r="16" fill="${bloq?'#DC2626':'#0F766E'}"/><text x="280" y="${bloq?176:209}" font-size="9" fill="#fff" text-anchor="middle">ALH⁺</text>${!bloq?'<path d="M280 228 L280 195" stroke="#0F766E" stroke-width="2.5" marker-end="url(#f2)"/>':''}`:''}
+ </svg>`;
+}
+function f9(){
+ canalPasso=0;
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 10 · Laboratório de anestésicos locais</span>
+   <h2>⚡ O bloqueio do canal de sódio, passo a passo</h2>
+   <p>Os AL bloqueiam reversivelmente a geração e a condução do impulso nervoso interagindo com sítios de ligação <strong>no interior do canal de sódio</strong>, impedindo o aumento da permeabilidade da membrana ao Na⁺. Avance a animação:</p>
+   <div id="canalSvg">${svgCanal(0)}</div>
+   <div class="detalhe" id="canalTxt" style="display:block">${PASSOS[0]}</div>
+   <div style="text-align:center;margin-top:8px">
+    <button class="btn sec" onclick="canalR()">↺ Reiniciar</button>
+    <button class="btn" id="canalBtn" onclick="canalN()">Próximo passo ▶</button>
+   </div>
+   <p class="nota" id="canalDica">Passo 0 de 4</p>
+  </div>
+  <div class="card">
+   <h3>🧫 Simulador de tecido (toque para alternar):</h3>
+   <div class="chips">
+    <span class="chip" id="phS" onclick="ph('s')">Tecido saudável · pH 7,4</span>
+    <span class="chip" id="phI" onclick="ph('i')">Tecido infectado · pH 5,0</span>
+   </div>
+   <div class="detalhe" id="phDet">Toque em um dos tecidos para infiltrar a lidocaína.</div>
+   <div class="feed ok" id="phOk" style="display:none">✅ Conclusão: em caso de inflamação/infecção, trata-se a infecção antes do procedimento, porque o pH ácido (proteases) encontra o pKa básico do AL e o mantém IONIZADO: sem atravessar a membrana, sem bloqueio, menos ação e eficiência.</div>
+  </div>
+  <div class="card">
+   <h3>Éster ou amida? Classifique:</h3>
+   <p class="nota">Ésteres: ação curta por hidrólise rápida, instáveis em solução, maior potencial alergênico. Amidas: ação de amidases, efeito mais duradouro, mais potentes, menos alergênicas e estáveis em solução.</p>
+   ${ALDRUGS.map((d,i)=>`
+    <div style="margin-bottom:8px">
+     <strong style="font-size:.85rem">${d[0]}</strong>
+     <div class="chips">
+      <span class="chip" id="a${i}ester" onclick="al(${i},'ester')">Éster</span>
+      <span class="chip" id="a${i}amida" onclick="al(${i},'amida')">Amida</span>
+     </div>
+    </div>`).join('')}
+   <div class="feed" id="alfb"></div>
+   <p class="nota">Dica: nome com dois "i" (l<u>i</u>doca<u>í</u>na, bup<u>i</u>vaca<u>í</u>na...) costuma ser amida.</p>
+  </div>
+  <div class="card">
+   <h3>💉 Adrenalina na seringa: vale a pena?</h3>
+   <p>O vasoconstritor associado: <strong>diminui a absorção sistêmica, prolonga a duração do efeito, melhora a qualidade da analgesia e limita os efeitos colaterais tóxicos</strong>. Veja nos números:</p>
+   <table class="tabela">
+    <tr><th>Fármaco</th><th>Sem epinefrina (dose máx / duração)</th><th>Com epinefrina (dose máx / duração)</th></tr>
+    <tr><td>Procaína (curta)</td><td>500 mg · 20 a 30 min</td><td>600 mg · 30 a 45 min</td></tr>
+    <tr><td><strong>Lidocaína (moderada)</strong></td><td><strong>300 mg · 30 a 60 min</strong></td><td><strong>500 mg · até 120 min</strong></td></tr>
+    <tr><td>Mepivacaína (moderada)</td><td>300 mg · 45 a 90 min</td><td>500 mg · 120 min</td></tr>
+    <tr><td>Bupivacaína (longa)</td><td>175 mg · 120 a 240 min</td><td>200 mg · 180 a 240 min</td></tr>
+   </table>
+   <p class="nota">A lidocaína dobra (ou mais) a duração e ganha margem de dose quando acompanhada do vasoconstritor.</p>
+   <h3>🌡️ Termômetro de toxicidade (lidocaína)</h3>
+   <p>Deslize o nível plasmático e veja a toxicidade progredir:</p>
+   <div class="term"><div class="cursor" id="tCur" style="left:0%"></div></div>
+   <input type="range" min="0" max="5" value="0" id="tox" oninput="tox(this.value)">
+   <div class="detalhe" id="toxDet" style="display:block"><strong>0 a 2 mcg/mL:</strong> faixa terapêutica (antiarrítmico); formigamento de lábios e zumbidos podem aparecer.</div>
+   <p class="nota" id="toxDica">Níveis explorados: 1/6</p>
+   <p class="nota">Sintomas de alerta na clínica: confusão mental, inquietação, vertigem, logorreia (frases sem sentido), hipoestesia perioral ou lingual e escotomas visuais.</p>
+  </div>
+  <div class="card" style="text-align:right">${botaoAvancar('av9')}</div>
+ </div>`;
+}
+function canalN(){
+ if(canalPasso<4)canalPasso++;
+ document.getElementById('canalSvg').innerHTML=svgCanal(canalPasso);
+ document.getElementById('canalTxt').innerHTML=PASSOS[canalPasso];
+ document.getElementById('canalDica').textContent='Passo '+canalPasso+' de 4';
+ if(canalPasso===4){document.getElementById('canalBtn').disabled=true; if(!S.sub.canal){S.sub.canal=1;pts(10);}}
+ chk9();
+}
+function canalR(){
+ canalPasso=0;
+ document.getElementById('canalSvg').innerHTML=svgCanal(0);
+ document.getElementById('canalTxt').innerHTML=PASSOS[0];
+ document.getElementById('canalDica').textContent='Passo 0 de 4';
+ document.getElementById('canalBtn').disabled=false;
+}
+function ph(t){
+ phVisto[t]=true;
+ document.getElementById('phS').classList.toggle('sel',t==='s');
+ document.getElementById('phI').classList.toggle('sel',t==='i');
+ const d=document.getElementById('phDet');
+ if(t==='s'){
+  d.innerHTML='<strong>pH 7,4:</strong> boa fração do AL fica NÃO ionizada → atravessa a membrana, reioniza dentro e bloqueia o canal de sódio por dentro. 🎯 Anestesia eficaz.';
+ } else {
+  d.innerHTML='<strong>pH 5,0 (infecção, proteases):</strong> meio ácido + pKa básico do AL = forma IONIZADA predominante lá fora → não atravessa a membrana. 🚫 O bloqueio falha, o paciente sente dor.';
+ }
+ if(phVisto.s&&phVisto.i){document.getElementById('phOk').style.display='block';}
+ chk9();
+}
+function al(i,fam){
+ if(alCls[i]==='ok')return;
+ const certa=ALDRUGS[i][1]===fam;
+ const c=document.getElementById('a'+i+fam);
+ if(certa){
+  c.classList.add('certa');
+  document.getElementById('a'+i+(fam==='ester'?'amida':'ester')).style.opacity=.4;
+  alCls[i]='ok'; pts(5);
+ } else {
+  c.classList.add('errada'); setTimeout(()=>c.classList.remove('errada'),900);
+ }
+ const total=ALDRUGS.filter((_,j)=>alCls[j]==='ok').length;
+ const fb=document.getElementById('alfb');
+ if(total===8){fb.className='feed ok';fb.innerHTML='✅ Completo! Ésteres: cocaína (fora de uso), procaína, benzocaína (tosse/colutório), tetracaína. Amidas: lidocaína, bupivacaína, mepivacaína, prilocaína.';}
+ chk9();
+}
+const TOXN=[
+ ['0 a 2 mcg/mL','faixa terapêutica (antiarrítmico); formigamento de lábios e zumbidos podem aparecer.'],
+ ['4 mcg/mL','distúrbios visuais.'],
+ ['6 a 8 mcg/mL','abalos musculares.'],
+ ['10 mcg/mL','convulsões e inconsciência.'],
+ ['20 mcg/mL','parada respiratória.'],
+ ['26 mcg/mL','parada cardíaca.']
+];
+let toxV=new Set([0]);
+function tox(v){
+ v=+v;
+ document.getElementById('tCur').style.left=(v/5*96)+'%';
+ document.getElementById('toxDet').innerHTML='<strong>'+TOXN[v][0]+':</strong> '+TOXN[v][1];
+ toxV.add(v);
+ document.getElementById('toxDica').textContent='Níveis explorados: '+toxV.size+'/6';
+ chk9();
+}
+function chk9(){
+ const todas=ALDRUGS.every((_,i)=>alCls[i]==='ok');
+ const ok=canalPasso===4&&phVisto.s&&phVisto.i&&todas&&toxV.size>=6;
+ const b=document.getElementById('av9'); if(b){b.disabled=!ok; if(ok)completa(9);}
+}
+/* ===================== F10: ALTA ===================== */
+const GUEDEL=[
+ ['Estágio I · Analgesia','Analgesia (dependente do agente), amnésia e euforia. O paciente ainda está em vigília.','medio'],
+ ['Estágio II · Excitação','Excitação, delirium, comportamento combativo. Fase a atravessar rápido.','alerta'],
+ ['Estágio III · Anestesia cirúrgica','Inconsciência, respiração regular, diminuição do movimento ocular. É AQUI que se opera.','bom'],
+ ['Estágio IV · Depressão bulbar','Parada respiratória, depressão e parada cardíaca, ausência de movimento ocular. Nunca chegar aqui.','alerta']
+];
+let guedelV=new Set([0]);
+function f10(){
+ return `
+ <div class="fase ativa">
+  <div class="card">
+   <span class="etq">Fase 11 · Sala de recuperação</span>
+   <h2>🌅 O plantão termina</h2>
+   <p>João operado e extubado, Maria com o bebê no colo, Ana estabilizada após a laparotomia, Paulo confortável após o bloqueio, Carlos monitorado na UTI. Antes de bater o ponto, o último instrumento do dia:</p>
+   <h3>🎚️ Console de profundidade: os estágios de Guedel</h3>
+   <p>Deslize do início da indução ao fundo da anestesia e observe cada estágio. <strong>Visite os 4.</strong></p>
+   <div class="painel">
+    <div class="tit">Aprofundando a anestesia: <span id="guNome" style="letter-spacing:0">Estágio I · Analgesia</span></div>
+    <input type="range" min="0" max="3" value="0" id="gu" oninput="guedel(this.value)">
+    <div class="monitor m3">
+     <div class="mon medio" id="guM"><b>Quadro</b><span id="guMv">Analgesia, amnésia, euforia</span></div>
+     <div class="mon bom"><b>Meta cirúrgica</b><span>Estágio III</span></div>
+     <div class="mon alerta"><b>Zona proibida</b><span>Estágio IV</span></div>
+    </div>
+   </div>
+   <p class="nota" id="guDica">Estágios visitados: 1/4</p>
+   <h3>Fechando:</h3>
+   <p>Durante a indução o paciente passa por uma fase de agitação e delirium antes de aprofundar. O que isso significa?</p>
+   ${quiz('q10',[
+    {t:'Estágio II (excitação): fase esperada, que se atravessa rapidamente',ok:true,fb:'Isso! Entre a analgesia (I) e o plano cirúrgico (III) existe a excitação (II), com delirium e comportamento combativo. Os agentes modernos de indução rápida, como o propofol, encurtam essa travessia.'},
+    {t:'Estágio IV: sinal de superdosagem',ok:false,fb:'O estágio IV é depressão bulbar: parada respiratória e cardíaca. Agitação na indução é o estágio II.'},
+    {t:'Reação alérgica ao hipnótico',ok:false,fb:'Sem sinais de anafilaxia, a agitação da indução é o clássico estágio II de Guedel.'}
+   ])}
+  </div>
+  <div class="card" id="final" style="display:none">
+   <h2>🏆 Plantão concluído!</h2>
+   <p>Pontuação final: <strong><span id="ptsF"></span> pontos</strong>. Você percorreu: níveis de sedação, técnicas anestésicas e suas complicações, indução balanceada em três perfis de paciente, mecanismos dos gerais, BNM, inalatórios e CAM, os quatro venosos em detalhe, hipertermia maligna, a história da cocaína, o canal de sódio e os estágios de Guedel.</p>
+   <button class="btn" onclick="resumo()">📥 Baixar meu resumo da jornada</button>
+   <p class="nota" style="margin-top:8px">Guarde o resumo: ele é o seu mapa de revisão para a prova.</p>
+  </div>
+ </div>`;
+}
+function guedel(v){
+ v=+v; const G=GUEDEL[v];
+ document.getElementById('guNome').textContent=G[0];
+ document.getElementById('guM').className='mon '+G[2];
+ document.getElementById('guMv').textContent=G[1];
+ guedelV.add(v);
+ document.getElementById('guDica').textContent='Estágios visitados: '+guedelV.size+'/4';
+ chk10();
+}
+function chk10(){
+ const ok=guedelV.size>=4&&S.sub['q10'];
+ if(ok&&!S.done.includes(10)){
+  completa(10);
+  const f=document.getElementById('final');
+  if(f){f.style.display='block';document.getElementById('ptsF').textContent=S.pts;}
+  document.getElementById('barra').style.width='100%';
+ }
+}
+function resumo(){
+ const txt=`PLANTÃO NO CENTRO CIRÚRGICO - RESUMO DA JORNADA (${S.pts} pts)
+Cuidados Farmacêuticos nas Doenças Inflamatórias - Profa. Caroline Mourão - Unifor
+
+1. SEDAÇÃO: mínima (acordado) -> moderada (responde a comando) -> profunda (pode precisar de assistência) -> anestesia geral (inconsciência, perda de reflexos e drive, risco cardiovascular).
+2. TÉCNICAS: geral (inalatória, venosa total, balanceada), raquidiana (subaracnóideo, pouca dose, cefaleia liquórica, hipotensão rápida), peridural (sem romper meninge, doses maiores, hipotensão lenta), bloqueio de plexo, local, combinada. Cesariana: raqui. Laparoscopia: geral balanceada.
+3. BALANCEADA: hipnótico + opioide + BNM; dose por idade, peso e estabilidade hemodinâmica. Eletivo estável: propofol + fentanil + rocurônio. Choque/estômago cheio (sequência rápida): etomidato + fentanil + succinilcolina. Procedimento curto e doloroso com um só agente: QUETAMINA (anestesia + analgesia própria, dispensa opioide).
+4. MECANISMO DOS GERAIS: aumentar o freio (potenciar GABA-A e glicina, abrir canais de K+) e cortar o acelerador (inibir NMDA e nACh). Propofol/etomidato: +GABA-A. Tiopental: +GABA-A e antagonista NMDA. Quetamina: antagonista NMDA. Inalatórios: múltiplos alvos.
+5. BNM: despolarizante (succinilcolina: agonista, fases I/II; RAM: mialgia, fasciculações, hipercalemia, hipertermia maligna, arritmias, aumento de pressões) x adespolarizantes competitivos (aminoesteroides sem histamina: rocurônio, vecurônio, pancurônio; benzilisoquinolínicos com histamina: atracúrio, tubocurarina; reversão: neostigmina).
+6. INALATÓRIOS: maior lipossolubilidade = menor CAM = maior potência. Sevoflurano (mais seguro, crianças), isoflurano (pungente, obstetrícia, custo), desflurano (ambulatorial, caro), halotano (asmáticos, HEPATOTÓXICO: contraindicado na lesão hepática, lento), óxido nitroso (fraco, coadjuvante, menos hepatotóxico). RAM: hipotensão, arritmias, hipertermia maligna.
+7. VENOSOS: Propofol (+GABA-A; sem náuseas/êmese; vasodilatação com queda de PA; substituiu o tiopental). Etomidato (+GABA-A; cardioestável; SEM analgesia; INIBE CORTISOL: não infundir por longos períodos). Quetamina (antagonista NMDA; ANESTESIA DISSOCIATIVA: desconexão mente-corpo; analgesia potente; hipertensão: escolha no choque; aumenta PIC; sonhos realistas/alucinações). Tiopental (+GABA-A e antagonista NMDA; ultracurto; potente anestésico, ANALGÉSICO FRACO; anemia hemolítica; espasmo de laringe).
+8. HIPERTERMIA MALIGNA: succinilcolina/inalatórios -> liberação descontrolada de cálcio -> rigidez, hipertermia, acidose, CK alta, hipercalemia. TRATAMENTO: DANTROLENO. Herança autossômica dominante.
+9. HISTÓRIA: folha de coca -> Niemann isola a cocaína (1860) -> Freud estuda, Koller faz a 1ª cirurgia ocular indolor (1884) -> Halsted cria o bloqueio de nervos (1884) -> Bier faz a 1ª raquidiana (1898) -> vício e toxicidade -> procaína/Novocaína (Einhorn, 1904) -> lidocaína (anos 1940).
+10. ANESTÉSICOS LOCAIS: forma não ionizada atravessa a membrana -> reioniza no citoplasma -> entra pelo lado de dentro do canal de sódio (aberto/inativado) -> bloqueia a entrada de Na+ -> sem potencial de ação, sem dor. Infecção (pH ácido) ioniza o AL e reduz a eficácia: tratar antes. Ésteres (procaína, tetracaína, benzocaína, cocaína): hidrólise rápida, alergênicos. Amidas (lidocaína, bupivacaína, mepivacaína, prilocaína): duradouras, potentes, estáveis. ADRENALINA: menos absorção sistêmica, maior duração (lidocaína 30-60 min -> até 120 min; dose máxima 300 -> 500 mg), melhor analgesia, menos toxicidade. Toxicidade lidocaína: 0-2 formigamento/zumbido; 4 visuais; 6-8 abalos; 10 convulsões/inconsciência; 20 parada respiratória; 26 parada cardíaca.
+11. GUEDEL: I analgesia/amnésia/euforia, II excitação/delirium, III anestesia cirúrgica (plano operatório), IV depressão bulbar (nunca).
+
+Pharmind - Semiologia Farmacêutica na Prática - @dracarolinemourao_`;
+ const b=new Blob([txt],{type:'text/plain;charset=utf-8'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(b); a.download='Resumo_Anestesicos_Plantao.txt'; a.click();
+}
+/* ===================== RENDER ===================== */
+const RENDER=[f0,f1,f2,f3,f4,f5,f6,f7,f8,f9,f10];
+const CHK=[chk0,chk1,chk2,chk3,chk4,chk5,chk6,chk7,chk8,chk9,chk10];
+function render(){
+ QZ={};
+ document.getElementById('palco').innerHTML=RENDER[S.fase]();
+ mapa();
+ if(CHK[S.fase])CHK[S.fase]();
+}
+render();
+</script>
+</body>
+</html>
